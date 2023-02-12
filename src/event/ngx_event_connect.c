@@ -31,6 +31,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     ngx_event_t       *rev, *wev;
     ngx_connection_t  *c;
 
+    // get 可以啥也不做
     rc = pc->get(pc, pc->data);
     if (rc != NGX_OK) {
         return rc;
@@ -38,6 +39,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     type = (pc->type ? pc->type : SOCK_STREAM);
 
+    // 创建 socket
     s = ngx_socket(pc->sockaddr->sa_family, type, 0);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "%s socket %d",
@@ -49,7 +51,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_ERROR;
     }
 
-
+    // 从连接池获取连接
     c = ngx_get_connection(s, pc->log);
 
     if (c == NULL) {
@@ -64,6 +66,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     c->type = type;
 
     if (pc->rcvbuf) {
+        // 修改接收缓冲区
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
                        (const void *) &pc->rcvbuf, sizeof(int)) == -1)
         {
@@ -74,6 +77,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     if (pc->so_keepalive) {
+        // 设置 keepalive
         value = 1;
 
         if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE,
@@ -158,6 +162,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     if (type == SOCK_STREAM) {
+        // 设置读写事件等
         c->recv = ngx_recv;
         c->send = ngx_send;
         c->recv_chain = ngx_recv_chain;
@@ -209,8 +214,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     rc = connect(s, pc->sockaddr, pc->socklen);
 
     if (rc == -1) {
+        // 连接失败了
         err = ngx_socket_errno;
-
 
         if (err != NGX_EINPROGRESS
 #if (NGX_WIN32)
@@ -249,6 +254,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
     }
 
+    // 到此为止，如果 rc == -1，则是连接正在进行中（NGX_EINPROGRESS）
+    // ! 这是什么意思？如果定义了 ngx_event_actions.add_conn 就直接返回吗？
     if (ngx_add_conn) {
         if (rc == -1) {
 
